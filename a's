@@ -1,0 +1,523 @@
+// labeling.cpp : このファイルには 'main' 関数が含まれています。プログラム実行の開始と終了がそこで行われます。
+//
+
+
+#include <iostream>
+// direction vectors
+#include <opencv2/core/core.hpp> 
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include "vector"
+#include "Header.h"
+//using namespace cv;
+cv::String filename= "C:\\Users\\wang.sikai\\Desktop\\miao.jpg";
+cv::Mat img_ = cv::imread(filename, cv::IMREAD_GRAYSCALE);
+double real=cv::threshold(img_,img_,187,255, cv::THRESH_OTSU);
+std::vector<int> tTable ;
+cv::Mat label(img_.size(),0);
+int currentLabel;
+int main()
+{
+	currentLabel = 0;
+	tTable.push_back(0);
+	
+
+	cv::Mat img_labels_(img_.size(), 0);
+
+	int w = img_labels_.cols;
+	int h = img_labels_.rows;
+
+	int lx, u, v, k;
+
+#define CONDITION_B1 img_row[x] > 0 
+#define CONDITION_B2 x+1<w && img_row[x+1] > 0              // WRONG in the original code -> add missing condition 
+#define CONDITION_B3 y+1<h && img_row_fol[x] > 0            // WRONG in the original code -> add missing condition
+#define CONDITION_B4 x+1<w && y+1<h && img_row_fol[x+1] > 0 // WRONG in the original code -> add missing condition
+#define CONDITION_U1 x-1>0 && img_row_prev[x-1] > 0         // WRONG in the original code -> add missing condition
+#define CONDITION_U2 img_row_prev[x] > 0
+#define CONDITION_U3 x+1<w && img_row_prev[x+1] > 0         // WRONG in the original code -> add missing condition
+#define CONDITION_U4 x+2<w && img_row_prev[x+2] > 0         // WRONG in the original code -> add missing condition
+#define ASSIGN_S img_labels_row[x] = img_labels_row[x-2]
+#define ASSIGN_P img_labels_row[x] = img_labels_row_prev_prev[x-2]
+#define ASSIGN_Q img_labels_row[x] = img_labels_row_prev_prev[x]
+#define ASSIGN_R img_labels_row[x] = img_labels_row_prev_prev[x+2]
+#define ASSIGN_LX img_labels_row[x] = lx
+#define LOAD_LX u = lx
+#define LOAD_PU u = img_labels_row_prev_prev[x-2]
+#define LOAD_PV v = img_labels_row_prev_prev[x-2]
+#define LOAD_QU u = img_labels_row_prev_prev[x]
+#define LOAD_QV v = img_labels_row_prev_prev[x]
+#define LOAD_QK k = img_labels_row_prev_prev[x]
+#define LOAD_RV v = img_labels_row_prev_prev[x+2]
+#define LOAD_RK k = img_labels_row_prev_prev[x+2]
+#define NEW_LABEL lx = img_labels_row[x] =newLabel();
+#define RESOLVE_2(u, v) merge(u,v);
+#define RESOLVE_3(u, v, k) merge(u,merge(v,k));
+
+	bool nextprocedure2;
+
+	int y = 0; // Extract from the first for
+	const int* const img_row = img_.ptr<int>(y);
+	const int* const img_row_fol = (int*)(((char*)img_row) + img_.step.p[0]);
+	int* const img_labels_row = img_labels_.ptr<int>(y);
+
+	// Process first two rows
+	for (int x = 0; x < w; x += 2) {
+		if (CONDITION_B1) {
+			NEW_LABEL;
+			if ((CONDITION_B2) || (CONDITION_B4))
+				nextprocedure2 = true;
+			else
+				nextprocedure2 = false;
+		}
+		else if (CONDITION_B2) {
+			NEW_LABEL;
+			nextprocedure2 = true;
+		}
+		else if (CONDITION_B3) {
+			NEW_LABEL;
+			if (CONDITION_B4)
+				nextprocedure2 = true;
+			else
+				nextprocedure2 = false;
+		}
+		else if (CONDITION_B4) {
+			NEW_LABEL;
+			nextprocedure2 = true;
+		}
+		else {
+			nextprocedure2 = false;
+		}
+	
+		
+		
+		while (nextprocedure2 && x + 2 < w) {
+			x = x + 2;
+
+			if (CONDITION_B1) {
+				ASSIGN_LX;
+				if ((CONDITION_B2) || (CONDITION_B4))
+					nextprocedure2 = true;
+				else
+					nextprocedure2 = false;
+			}
+			else if (CONDITION_B2) {
+
+				if (CONDITION_B3) {
+					ASSIGN_LX;
+				}
+				else {
+					NEW_LABEL;
+				}
+				nextprocedure2 = true;
+			}
+			else if (CONDITION_B3) {
+				ASSIGN_LX;
+				if (CONDITION_B4)
+					nextprocedure2 = true;
+				else
+					nextprocedure2 = false;
+			}
+			else if (CONDITION_B4) {
+				NEW_LABEL;
+				nextprocedure2 = true;
+			}
+			else {
+				nextprocedure2 = false;
+			}
+
+		}
+		
+
+	}
+	
+
+	for (int y = 2; y < h; y += 2) {
+		const int* const img_row = img_.ptr<int>(y);
+		const int* const img_row_prev = (int*)(((char*)img_row) - img_.step.p[0]);
+		const int* const img_row_fol = (int*)(((char*)img_row) + img_.step.p[0]);
+		int* const img_labels_row = img_labels_.ptr<int>(y);
+		int* const img_labels_row_prev_prev = (int*)(((char*)img_labels_row) - img_labels_.step.p[0] - img_labels_.step.p[0]);
+		for (int x = 0; x < w; x += 2) {
+
+			if (CONDITION_B1) {
+				if (CONDITION_B2) {
+					if (CONDITION_U2) {
+						lx = ASSIGN_Q;
+						if (CONDITION_U3) {
+
+						}
+						else {
+							if (CONDITION_U4) {
+								LOAD_LX;
+								LOAD_RV;
+								RESOLVE_2(u, v);
+							}
+						}
+					}
+					else if (CONDITION_U3) {
+						lx = ASSIGN_Q;
+						if (CONDITION_U1) {
+							LOAD_LX;
+							LOAD_PV;
+							RESOLVE_2(u, v);
+						}
+
+					}
+					else if (CONDITION_U1) {
+						lx = ASSIGN_P;
+						if (CONDITION_U4) {
+							LOAD_LX;
+							LOAD_RV;
+							RESOLVE_2(u, v);
+						}
+					}
+					else if (CONDITION_U4) {
+						lx = ASSIGN_R;
+					}
+					else {
+						NEW_LABEL;
+					}
+					nextprocedure2 = true;
+				}
+				else {
+					if (CONDITION_U2) {
+						lx = ASSIGN_Q;
+					}
+					else if (CONDITION_U1) {
+						lx = ASSIGN_P;
+						if (CONDITION_U3) {
+							LOAD_LX;
+							LOAD_QV;
+							RESOLVE_2(u, v);
+
+						}
+					}
+					else if (CONDITION_U3) {
+						lx = ASSIGN_Q;
+					}
+					else {
+						NEW_LABEL;
+					}
+					if (CONDITION_B4)
+						nextprocedure2 = true;
+					else
+						nextprocedure2 = false;
+
+				}
+			}
+			else if (CONDITION_B2) {
+				if (CONDITION_U3) {
+					lx = ASSIGN_Q;
+				}
+				else if (CONDITION_U2) {
+					lx = ASSIGN_Q;
+					if (CONDITION_U4) {
+						LOAD_LX;
+						LOAD_RV;
+						RESOLVE_2(u, v);
+					}
+				}
+				else if (CONDITION_U4) {
+					lx = ASSIGN_R;
+				}
+				else {
+					NEW_LABEL;
+				}
+				nextprocedure2 = true;
+			}
+			else if (CONDITION_B3) {
+				NEW_LABEL;
+				if (CONDITION_B4)
+					nextprocedure2 = true;//
+				else
+					nextprocedure2 = false;
+			}
+			else if (CONDITION_B4) {
+				NEW_LABEL;
+				nextprocedure2 = true;
+			}
+			else {
+				nextprocedure2 = false;
+			}
+
+		
+			
+			while (nextprocedure2 && x + 2 < w) {
+				x = x + 2;
+				if (CONDITION_B1) {
+
+					ASSIGN_LX;
+					if (CONDITION_B2) {
+						if (CONDITION_U2) {
+							if (CONDITION_U3) {
+								LOAD_LX;
+								LOAD_QV;
+								int etf=img_labels_row_prev_prev[x]; 
+								int wtf = etf;
+								RESOLVE_2(u, v);
+							}
+							else {
+								if (CONDITION_U4) {
+									LOAD_LX;
+									LOAD_QV;
+									LOAD_RK;
+									RESOLVE_3(u, v, k);
+								}
+								else {
+									LOAD_LX;
+									LOAD_QV;
+									RESOLVE_2(u, v);
+								}
+							}
+
+						}
+						else if (CONDITION_U3) {
+							if (CONDITION_U1) {
+								LOAD_LX;
+								LOAD_PV;
+								LOAD_QK;
+								RESOLVE_3(u, v, k);
+							}
+							else {
+								// Reslove S, Q
+								LOAD_LX;
+								LOAD_QV;
+								RESOLVE_2(u, v);
+							}
+						}
+						else if (CONDITION_U1) {
+							if (CONDITION_U4) {
+								LOAD_LX;
+								LOAD_PV;
+								LOAD_RK;
+								RESOLVE_3(u, v, k);
+							}
+							else {
+								LOAD_LX;
+								LOAD_PV;
+								RESOLVE_2(u, v);
+							}
+
+						}
+						else if (CONDITION_U4) {
+							LOAD_LX;
+							LOAD_RV;
+							RESOLVE_2(u, v);
+						}
+						nextprocedure2 = true;
+					}
+					else {
+						ASSIGN_LX;
+						if (CONDITION_U2) {
+							LOAD_LX;
+							LOAD_QV;
+							RESOLVE_2(u, v);
+						}
+						else if (CONDITION_U1) {
+							if (CONDITION_U3) {
+								LOAD_LX;
+								LOAD_PV;
+								LOAD_QK;
+								RESOLVE_3(u, v, k);
+							}
+							else {
+								LOAD_LX;
+								LOAD_PV;
+								RESOLVE_2(u, v);
+							}
+						}
+						else if (CONDITION_U3) {
+							LOAD_LX;
+							LOAD_QV;
+							RESOLVE_2(u, v);
+						}
+
+						if (CONDITION_B4)
+							nextprocedure2 = true;//
+						else
+							nextprocedure2 = false;
+					}
+
+				}
+				else if (CONDITION_B2) {
+					if (CONDITION_B3) {
+						ASSIGN_LX;
+						if (CONDITION_U3) {
+							LOAD_LX;
+							LOAD_QV;
+							RESOLVE_2(u, v);
+						}
+						else if (CONDITION_U2) {
+							if (CONDITION_U4) {
+								LOAD_LX;
+								LOAD_QV;
+								LOAD_RK;
+								RESOLVE_3(u, v, k);
+							}
+							else {
+								LOAD_LX;
+								LOAD_QV;
+								RESOLVE_2(u, v);
+							}
+						}if (CONDITION_U4) {
+							LOAD_LX;
+							LOAD_RV;
+							RESOLVE_2(u, v);
+						}
+					}
+					else {
+						if (CONDITION_U3) {
+							lx = ASSIGN_Q;
+						}
+						else if (CONDITION_U2) {
+							lx = ASSIGN_Q;
+							if (CONDITION_U4) {
+								LOAD_LX;
+								LOAD_RV;
+								RESOLVE_2(u, v);
+							}
+						}
+						else if (CONDITION_U4) {
+							lx = ASSIGN_R;
+						}
+						else {
+							NEW_LABEL;
+						}
+					}
+
+					nextprocedure2 = true;
+				}
+				else if (CONDITION_B3) {
+					ASSIGN_LX;
+					if (CONDITION_B4)
+						nextprocedure2 = true;
+					else
+						nextprocedure2 = false;
+				}
+				else if (CONDITION_B4) {
+					NEW_LABEL;
+					nextprocedure2 = true;
+				}
+				else {
+					nextprocedure2 = false;
+				}
+			}
+
+		}
+	}
+
+	// Second scan (changed with better performing strategy to handle odd rows and columns)
+	//n_labels_ = LabelsSolver::Flatten();
+	//std::cout << "M = " << std::endl << " " << img_labels_ << std::endl << std::endl;
+	Flatten();
+	for (int r = 0; r < h; r += 2) {
+		for (int c = 0; c < w; c += 2) {
+			int iLabel = img_labels_.at<unsigned char>(r,c);
+			if (iLabel > 0) {
+				iLabel = tTable[iLabel];
+				if (img_.at<unsigned char>(r, c) > 0)
+					img_labels_.at<unsigned char>(r, c) = iLabel;
+				else
+					img_labels_.at<unsigned char>(r, c) = 0;
+				if (c + 1 < w) {
+					if (img_.at<unsigned char>(r, c + 1) > 0)
+						img_labels_.at<unsigned char>(r, c + 1) = iLabel;
+					else
+						img_labels_.at<unsigned char>(r, c + 1) = 0;
+					if (r + 1 < h) {
+						if (img_.at<unsigned char>(r + 1, c) > 0)
+							img_labels_.at<unsigned char>(r + 1, c) = iLabel;
+						else
+							img_labels_.at<unsigned char>(r + 1, c) = 0;
+						if (img_.at<unsigned char>(r + 1, c + 1) > 0)
+							img_labels_.at<unsigned char>(r + 1, c + 1) = iLabel;
+						else
+							img_labels_.at<unsigned char>(r + 1, c + 1) = 0;
+					}
+				}
+				else if (r + 1 < h) {
+					if (img_.at<unsigned char>(r + 1, c) > 0)
+						img_labels_.at<unsigned char>(r + 1, c) = iLabel;
+					else
+						img_labels_.at<unsigned char>(r + 1, c) = 0;
+				}
+			}
+			else {
+				img_labels_.at<unsigned char>(r, c) = 0;
+				if (c + 1 < w) {
+					img_labels_.at<unsigned char>(r, c + 1) = 0;
+					if (r + 1 < h) {
+						img_labels_.at<unsigned char>(r + 1, c) = 0;
+						img_labels_.at<unsigned char>(r + 1, c + 1) = 0;
+					}
+				}
+				else if (r + 1 < h) {
+					img_labels_.at<unsigned char>(r + 1, c) = 0;
+				}
+			}
+		}
+	}
+
+
+	cv::imshow("WTF", img_labels_);
+	cv::waitKey(10000);
+	
+	return 1;
+}
+
+int findroot(int i) {
+	while (tTable[i] < i) {
+		i = tTable[i];
+	}
+	return i;
+}
+
+
+
+int merge(int i, int j){
+	i = findroot(i);
+	j = findroot(j);
+	if (i < j) {
+		return tTable[j] = i;
+	}else {
+		return tTable[i] = j;
+	}
+	return i;
+}
+
+int newLabel() {
+	//for (int i = 0; i < tTable.size(); i++) { std::cout << tTable.at(i) << "  "; }
+	currentLabel = currentLabel+1;
+	tTable.push_back(currentLabel);
+	return currentLabel;
+}
+
+
+
+int Flatten()
+{
+	int k = 1;
+	for (int i = 1; i < tTable.size(); ++i) {
+		if (tTable[i] < i) {
+			tTable[i] = tTable[tTable[i]];
+		}
+		else {
+			tTable[i] = k;
+			k = k + 1;
+		}
+	}
+	return k;
+}
+
+int Draw() {
+/*
+	for (int i = 0; i < img_.rows; i++) {
+		for (int j = 0; j < img_.cols; j++) {
+			img_.at<unsigned char>(i, j) = (img_.at<unsigned char>(i, j)) % 9;
+		}
+	}
+	*/
+	return 1;
+		
+}
